@@ -1,5 +1,8 @@
-flask
+Flask
 keras
 numpy
 scikit-learn
 pandas
+tensorflow
+gunicorn
+pillow
