@@ -237,19 +237,13 @@ def konversi_variabel_laju(variabel):
 
     return laju
 
-
-def input_preproces(input_data, features):
+def input_preproces(input_df, features):
     output_data = {}
 
     for feature in features:
         output_data[feature] = []
 
-    for entry in input_data:
-        for feature in features:
-            output_data[feature].extend(entry[feature])
-
-    input_df = pd.DataFrame(output_data)
-
+    print(input_df)
     for feature in features:
         rate_feature = feature + '_rate'
         input_df[rate_feature] = konversi_variabel_laju(input_df[feature])
@@ -257,7 +251,6 @@ def input_preproces(input_data, features):
     output_features = list(input_df.columns)
 
     input_scaled = scaler.fit_transform(input_df)
-
     return input_scaled, output_features
 
 def predict_per_4_days(model, input_df, output_features):
@@ -290,13 +283,15 @@ def json_output(future_predictions_df, features):
 def predict_weather():
     try:
         data = request.get_json(force=True)
-        kota = data['kota']
-        input_data = data["input_data"]
-        features = ['Tn', 'Tx', 'RH_avg', 'RR']
+        kota = data["kota"]
+        features = ["Tn", "Tx", "RH_avg", "RR"]
+
+        input_data = np.array([[entry[feature] for feature in features] for entry in data["input_data"]])
+        input_df = pd.DataFrame(input_data, columns=features)
 
         model = choose_model(kota)
 
-        input_scaled, output_features = input_preproces(input_data, features)
+        input_scaled, output_features = input_preproces(input_df, features)
 
         future_predictions_df = predict_per_4_days(model, input_scaled, output_features)
 
