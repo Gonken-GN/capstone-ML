@@ -210,6 +210,103 @@ def merge_values(future_predictions_df, aqi_days):
 
     return result
 
+def choose_model(kota):
+    
+    if kota == "jakarta":
+        model = load_model("model_weather_jakarta.h5")
+
+    elif kota == "semarang":
+        model = load_model("model_weather_semarang.h5")
+
+    elif kota == "bandung":
+        model = load_model("model_weather_bandung.h5")
+
+    return model
+def konversi_variabel_laju(variabel):
+
+    jumlah_data = len(variabel)
+    laju = np.zeros(jumlah_data)
+
+    for i in range(jumlah_data):
+        if i == 0:
+            laju[i] = variabel[i+1] - variabel[i]
+        elif 0 < i < jumlah_data - 1:
+            laju[i] = ((variabel[i] - variabel[i-1]) + (variabel[i+1] - variabel[i])) / 2
+        elif i == jumlah_data - 1:
+            laju[i] = variabel[i] - variabel[i-1]
+
+    return laju
+
+
+def input_preproces(input_data, features):
+    output_data = {}
+
+    for feature in features:
+        output_data[feature] = []
+
+    for entry in input_data:
+        for feature in features:
+            output_data[feature].extend(entry[feature])
+
+    input_df = pd.DataFrame(output_data)
+
+    for feature in features:
+        rate_feature = feature + '_rate'
+        input_df[rate_feature] = konversi_variabel_laju(input_df[feature])
+
+    output_features = list(input_df.columns)
+
+    input_scaled = scaler.fit_transform(input_df)
+
+    return input_scaled, output_features
+
+def predict_per_4_days(model, input_df, output_features):
+
+    last_4_days = input_df
+    future_predictions = []
+    n_features_input = len(output_features)
+
+    for _ in range(4):
+        input_sequence = last_4_days.reshape(1, 4, n_features_input)
+        prediction = model.predict(input_sequence)
+        prediction_inversed = scaler.inverse_transform(prediction)
+        future_predictions.append(prediction_inversed.flatten())
+        last_4_days = np.concatenate((last_4_days[1:], prediction), axis=0)
+
+    future_predictions_df = pd.DataFrame(future_predictions, columns=output_features)
+
+    return future_predictions_df
+
+def json_output(future_predictions_df, features):
+    rounded_predictions_df = future_predictions_df[features].astype(float).round(2)
+    rounded_predictions_df.index = rounded_predictions_df.index + 1
+    json_result = {
+        "predictions": rounded_predictions_df[features].to_dict(orient='index')
+    }
+
+    return json_result
+
+@app.route('/predict_weather', methods=['POST'])
+def predict():
+    try:
+        data = request.get_json(force=True)
+        kota = data['kota']
+        input_data = data["input_data"]
+        features = ['Tn', 'Tx', 'RH_avg', 'RR']
+
+        model = choose_model(kota)
+
+        input_scaled, output_features = input_preproces(input_data, features)
+
+        future_predictions_df = predict_per_4_days(model, input_scaled, output_features)
+
+        result = json_output(future_predictions_df, features)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
