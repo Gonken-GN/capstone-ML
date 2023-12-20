@@ -287,7 +287,7 @@ def json_output(future_predictions_df, features):
     return json_result
 
 @app.route('/predict_weather', methods=['POST'])
-def predict():
+def predict_weather():
     try:
         data = request.get_json(force=True)
         kota = data['kota']
@@ -308,7 +308,7 @@ def predict():
         return jsonify({'error': str(e)})
     
 @app.route('/predict', methods=['POST'])
-def predict():
+def predict_aqi():
     try:
         data = request.get_json(force=True)
         kota = data['kota']
