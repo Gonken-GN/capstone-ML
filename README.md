@@ -1,4 +1,4 @@
-# Nutriast JS MachineLearning API
+# H-AirUp MachineLearning API
 
 ## Project Description
 ### Title:
